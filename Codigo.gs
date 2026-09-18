@@ -1,6 +1,6 @@
 /**
  * Physique Pro — Backend Google Apps Script
- * VERSION: 2026-09-17-db-v7
+ * VERSION: 2026-09-18-db-v8
  *
  * Banco central do app:
  * - Medidas
@@ -20,14 +20,14 @@
  * 5. Continue usando a mesma URL /exec no Physique Pro.
  */
 
-var VERSION='2026-09-17-db-v7';
+var VERSION='2026-09-18-db-v8';
 var HEVY_BASE='https://api.hevyapp.com/v1';
 
 var MEDIDAS_CANON=['id','data','peso','altura','pescoco','cintura','abdomen','quadril','peito','ombros',
   'bicepsD','bicepsE','antD','antE','coxaD','coxaE','panD','panE','gordura','massaMagra','ffmi','notas'];
 
 var DATASETS={
-  rotina:{sheet:'Rotina',headers:['id','data','primeiraRefeicao','ultimaRefeicao','refeicoes','agua','sono','humor','energia','fome','digestao','ovos','whey','albumina','frango','carne','feijao','arroz','aveia','proteinaTotal','notas','updatedAt']},
+  rotina:{sheet:'Rotina',headers:['id','data','primeiraRefeicao','ultimaRefeicao','refeicoes','agua','sono','humor','energia','fome','digestao','calorias','prancha','ovos','whey','albumina','frango','carne','feijao','arroz','aveia','proteinaTotal','notas','updatedAt']},
   recuperacao:{sheet:'Recuperacao',headers:['id','data','sono','energia','recuperacao','treino','updatedAt']},
   prato:{sheet:'Prato',headers:['id','data','veg','prot','carb','hid','variedade','score','updatedAt']},
   scan:{sheet:'Scans',headers:['id','data','frontScore','sideScore','backScore','avgScore','comparabilidade','notas','updatedAt']},

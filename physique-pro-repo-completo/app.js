@@ -19,7 +19,7 @@ const METRICS = [
 ];
 const NAV = [
   ['overview','Visão Geral','⌂'],['measures','Medidas','↗'],['evolution','Evolução','∿'],['add','Nova medição','＋'],
-  ['history','Histórico','◷'],['scan','Scan','▣'],['routine','Rotina','◴'],['settings','Config','⚙']
+  ['history','Histórico','◷'],['scan','Scan','▣'],['routine','Rotina','◴'],['plank','Prancha','⏱'],['settings','Config','⚙']
 ];
 const BOTTOM = ['overview','evolution','add','scan','routine'];
 const $ = s => document.querySelector(s);
@@ -248,8 +248,8 @@ function buildNav(){
   $('#bottomNav').innerHTML=BOTTOM.map(id=>{const n=NAV.find(x=>x[0]===id);return `<button class="${state.view===id?'on':''}" data-view="${id}">${n[2]}<br>${n[1]}</button>`}).join('');
   $$('[data-view]').forEach(b=>b.onclick=()=>go(b.dataset.view));
 }
-function go(v){state.view=v;const n=NAV.find(x=>x[0]===v);$('#pageTitle').textContent=n?.[1]||'Physique Pro';$('#pageEyebrow').textContent=v==='overview'?'PAINEL':'PHYSIQUE PRO';buildNav();render();window.scrollTo({top:0,behavior:'smooth'})}
-function render(){buildNav(); const f={overview:renderOverview,measures:renderMeasures,evolution:renderEvolution,add:renderAdd,history:renderHistory,scan:renderScan,routine:renderRoutine,settings:renderSettings}[state.view]||renderOverview;f()}
+function go(v){stopPlank();state.view=v;const n=NAV.find(x=>x[0]===v);$('#pageTitle').textContent=n?.[1]||'Physique Pro';$('#pageEyebrow').textContent=v==='overview'?'PAINEL':'PHYSIQUE PRO';buildNav();render();window.scrollTo({top:0,behavior:'smooth'})}
+function render(){buildNav(); const f={overview:renderOverview,measures:renderMeasures,evolution:renderEvolution,add:renderAdd,history:renderHistory,scan:renderScan,routine:renderRoutine,plank:renderPlank,settings:renderSettings}[state.view]||renderOverview;f()}
 function empty(title,desc,action='add',label='Nova medição'){return `<div class="card empty"><div class="empty-ic">＋</div><h3>${esc(title)}</h3><p>${esc(desc)}</p><button class="primary-btn" data-go="${action}">${esc(label)}</button></div>`}
 function wireGo(){$$('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go))}
 
@@ -362,6 +362,7 @@ const BODY_PARTS=[
   ['biceps','ring',150,160],['coxa','ring',270,126],['panturrilha','ring',360,124]
 ];
 const BODY_HALF='M100,64 C109,64 115,66 117,73 C120,82 128,86 140,90 C152,94 162,101 166,114 C169,124 167,136 163,150 C160,164 157,178 154,192 C152,202 151,212 150,222 C149,228 146,230 143,227 C140,216 140,205 140,194 C140,180 142,165 137,151 C133,139 129,129 126,121 C124,133 124,149 121,163 C119,173 117,181 119,191 C121,201 125,206 127,215 C129,225 130,237 130,249 C129,271 126,289 124,313 C123,327 124,337 123,349 C122,363 123,379 121,399 C120,409 120,415 121,421 C127,422 130,423 129,427 L105,427 C104,400 106,360 105,300 C104,268 105,240 103,222 L100,220';
+const BODY_MUSC=['M101,108 C117,109 129,113 135,122 C129,129 117,131 103,129','M123,99 C132,103 139,111 141,122','M101,131 L101,167','M101,141 L117,140','M101,152 L115,151','M101,163 L113,162','M119,131 C123,142 122,152 117,162','M149,120 C155,131 154,143 150,156','M115,232 C119,256 117,286 114,312','M125,250 C129,270 128,292 125,310','M117,332 C121,342 120,353 117,361'];
 function bodyHologram(active,opts){
   opts=opts||{};const vals=opts.values||{},interactive=opts.mode==='evolution';
   const parts=BODY_PARTS.map(p=>{
@@ -372,8 +373,11 @@ function bodyHologram(active,opts){
   }).join('');
   return `<svg class="body-holo ${interactive?'interactive':''}" viewBox="0 0 200 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mapa corporal">
    <defs><filter id="bhglow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-   <linearGradient id="bhg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#37e6ff"/><stop offset="1" stop-color="#7c5cff"/></linearGradient></defs>
+   <linearGradient id="bhg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#37e6ff"/><stop offset="1" stop-color="#7c5cff"/></linearGradient>
+   <linearGradient id="bhfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#37e6ff" stop-opacity="0.05"/><stop offset="1" stop-color="#7c5cff" stop-opacity="0.09"/></linearGradient></defs>
+   <path d="${BODY_HALF}" fill="url(#bhfill)"/><path d="${BODY_HALF}" transform="matrix(-1,0,0,1,200,0)" fill="url(#bhfill)"/>
    <g filter="url(#bhglow)"><circle class="body-line" cx="100" cy="40" r="20"/><path class="body-line" d="M100,60 L100,64"/><path class="body-line" stroke-linecap="round" d="${BODY_HALF}"/><path class="body-line" stroke-linecap="round" d="${BODY_HALF}" transform="matrix(-1,0,0,1,200,0)"/></g>
+   <g class="body-musc">${BODY_MUSC.map(d=>`<path d="${d}"/><path d="${d}" transform="matrix(-1,0,0,1,200,0)"/>`).join('')}</g>
    ${parts}</svg>`;
 }
 function highlightBodyPart(part){$$('.body-holo .hot').forEach(h=>h.classList.toggle('on',h.dataset.part===part))}
@@ -562,7 +566,7 @@ async function renderRoutine(){
   const recScore=recoveryFromRoutine(r),[recTxt,recCls,recDesc]=recoveryLabel(recScore),recPct=recScore==null?0:recScore;
   $('#view').innerHTML=`<div class="card hero" style="margin-bottom:14px"><div><span class="eyebrow">SCORE DE RECUPERAÇÃO</span><h2 style="font-size:23px">${esc(recTxt)}</h2><p>${esc(recDesc)} Combina sono, humor, energia, fome e digestão do registro de hoje.</p></div><div class="hero-ring" style="--pct:${recPct}%"><div><b>${recScore==null?'—':recScore}</b><small>HOJE</small></div></div></div>
   <div class="routine-summary"><div class="card kpi"><div class="label">DIAS REGISTRADOS</div><div class="value">${last7.length}/7</div><div class="meta">últimos 7 dias</div></div><div class="card kpi"><div class="label">ÁGUA MÉDIA</div><div class="value">${fmt(avgW)} L</div><div class="meta">quando registrado</div></div><div class="card kpi"><div class="label">ENERGIA MÉDIA</div><div class="value">${fmt(avgE)}</div><div class="meta">escala 1–5</div></div><div class="card kpi"><div class="label">TREINOS HEVY</div><div class="value">${state.hevy.length||'—'}</div><div class="meta">período carregado</div></div></div>
-  <div class="section-head"><div><h3>Registro do dia</h3><p>Rotina alimentar e sensação geral, sem pontuação corporal.</p></div></div><form id="routineForm" class="card form-card"><div class="routine-form">${field('Primeira refeição','primeiraRefeicao','time',r.primeiraRefeicao||'')}${field('Última refeição','ultimaRefeicao','time',r.ultimaRefeicao||'')}${field('Nº de refeições','refeicoes','number',r.refeicoes||'')}${field('Água (L)','agua','number',r.agua||'',false,'0.1')}${field('Sono (h)','sono','number',r.sono||'',false,'0.5')}${selectField('Humor','humor',r.humor)}${selectField('Energia','energia',r.energia)}${selectField('Fome','fome',r.fome)}${selectField('Digestão','digestao',r.digestao)}</div>${proteinSection(r)}<div class="field" style="margin-top:10px"><label>Observações</label><textarea name="notas">${esc(r.notas||'')}</textarea></div><button class="primary-btn" style="margin-top:12px" type="submit">Salvar rotina do dia</button></form>
+  <div class="section-head"><div><h3>Registro do dia</h3><p>Rotina alimentar e sensação geral, sem pontuação corporal.</p></div></div><form id="routineForm" class="card form-card"><div class="routine-form">${field('Primeira refeição','primeiraRefeicao','time',r.primeiraRefeicao||'')}${field('Última refeição','ultimaRefeicao','time',r.ultimaRefeicao||'')}${field('Nº de refeições','refeicoes','number',r.refeicoes||'')}${field('Água (L)','agua','number',r.agua||'',false,'0.1')}${field('Sono (h)','sono','number',r.sono||'',false,'0.5')}${field('Calorias gastas (kcal)','calorias','number',r.calorias||'',false,'10')}${selectField('Humor','humor',r.humor)}${selectField('Energia','energia',r.energia)}${selectField('Fome','fome',r.fome)}${selectField('Digestão','digestao',r.digestao)}</div>${proteinSection(r)}<div class="field" style="margin-top:10px"><label>Observações</label><textarea name="notas">${esc(r.notas||'')}</textarea></div><button class="primary-btn" style="margin-top:12px" type="submit">Salvar rotina do dia</button></form>
   <div class="section-head"><div><h3>Treinos recentes</h3><p>Leitura opcional do Hevy via Apps Script.</p></div><button class="ghost-btn" id="hevyBtn">Atualizar Hevy</button></div><div class="card pad hevy-list" id="hevyList">${hevyHTML()}</div>
   ${trainingAnalysisHTML()}`;
   $('#routineForm').onsubmit=saveRoutine;$('#routineForm').addEventListener('input',e=>{if(e.target.classList&&e.target.classList.contains('prot-in'))recalcProtein()});$('#hevyBtn').onclick=loadHevy
@@ -600,6 +604,33 @@ function trainingAnalysisHTML(){
   }catch{return ''}
 }
 
+/* ===== Contador de prancha ===== */
+let plankInt=null,plankSec=0;
+function plankFmt(s){s=Math.max(0,Math.round(s));const m=Math.floor(s/60);return `${m}:${String(s%60).padStart(2,'0')}`}
+function plankBest(){try{const v=state.routine.map(x=>num(x.prancha)).filter(n=>n!=null&&n>0);return v.length?Math.max(...v):null}catch{return null}}
+function plankTodaySec(){return num(routineToday().prancha)||0}
+function stopPlank(){if(plankInt){clearInterval(plankInt);plankInt=null}}
+async function mergeRoutineToday(patch){const i=state.routine.findIndex(x=>String(x.id)===today()||String(x.data).slice(0,10)===today());const base=i>=0?state.routine[i]:{id:today(),data:today()};const r={...base,...patch,id:today(),data:today()};i>=0?state.routine[i]=r:state.routine.push(r);saveCache();return apiPost('routine_upsert',r)}
+function renderPlank(){
+  const best=plankBest(),td=plankTodaySec();
+  const hist=state.routine.filter(x=>num(x.prancha)>0).sort((a,b)=>String(b.data).localeCompare(String(a.data))).slice(0,6);
+  plankSec=0;
+  $('#view').innerHTML=`<div class="card pad" style="text-align:center"><span class="eyebrow">CONTADOR DE PRANCHA</span>
+   <div class="plank-time" id="plankTime">0:00</div>
+   <div class="plank-btns"><button class="primary-btn" id="plankToggle">Iniciar</button><button class="ghost-btn" id="plankReset">Zerar</button></div>
+   <p class="body-hint">Segure a prancha e pare o cronômetro ao terminar. O melhor tempo do dia é salvo e sincronizado.</p></div>
+   <div class="grid cols-2" style="margin-top:14px"><div class="card kpi"><div class="label">RECORDE</div><div class="value">${best?plankFmt(best):'—'}</div><div class="meta">seu maior tempo</div></div><div class="card kpi"><div class="label">HOJE</div><div class="value">${td?plankFmt(td):'—'}</div><div class="meta">melhor de hoje</div></div></div>
+   ${hist.length?`<div class="section-head"><div><h3>Últimos registros</h3><p>Toque num dia para conferir</p></div></div><div class="card pad">${hist.map(x=>`<div class="plank-row"><span>${fmtDate(String(x.data).slice(0,10))}</span><b>${plankFmt(num(x.prancha))}</b></div>`).join('')}</div>`:''}`;
+  const tog=$('#plankToggle');
+  tog.onclick=async()=>{
+    if(plankInt){stopPlank();
+      if(plankSec>0&&plankSec>td){await mergeRoutineToday({prancha:plankSec});toast('Novo recorde do dia salvo!')}
+      else if(plankSec>0)toast(`Tempo: ${plankFmt(plankSec)} (menor que o de hoje)`);
+      renderPlank();
+    }else{plankInt=setInterval(()=>{plankSec++;const el=$('#plankTime');if(el)el.textContent=plankFmt(plankSec)},1000);tog.textContent='Parar';tog.classList.add('rec')}
+  };
+  $('#plankReset').onclick=()=>{stopPlank();plankSec=0;renderPlank()};
+}
 function renderSettings(){
   $('#view').innerHTML=`<div class="settings-grid"><div class="card settings-card"><h3>Banco de dados</h3><div class="field"><label>URL do Apps Script (/exec)</label><input id="apiInput" value="${esc(state.apiUrl)}"></div><div class="action-row" style="margin-top:10px"><button class="primary-btn" id="saveApi">Salvar e testar</button><button class="ghost-btn" id="syncNow">Sincronizar</button></div><p>Compatível com o backend antigo (get/upsert) e com o banco novo (bootstrap + datasets).</p></div>
   <div class="card settings-card"><h3>Perfil</h3><div class="field"><label>Altura fixa (cm)</label><input id="heightInput" type="number" step="0.5" value="${esc(state.profile.altura||last()?.altura||'')}"></div><button class="primary-btn" id="saveProfile" style="margin-top:10px">Salvar perfil</button></div>

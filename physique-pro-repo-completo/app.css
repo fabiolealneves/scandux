@@ -141,3 +141,15 @@
 .report-body p{color:var(--muted);font-size:12.5px;line-height:1.7;margin:8px 0 0}
 .report-do{color:var(--text)!important;border-top:1px solid var(--line);padding-top:10px;margin-top:12px!important}
 .report-do b{color:var(--primary2)}
+
+/* ===== Musculatura do corpo ===== */
+.body-musc path{fill:none;stroke:#54b0dd;stroke-width:.9;opacity:.5;stroke-linecap:round}
+:root[data-theme="light"] .body-musc path{stroke:#3a7fa8;opacity:.5}
+
+/* ===== Contador de prancha ===== */
+.plank-time{font:800 66px var(--display);letter-spacing:-2px;margin:12px 0;font-variant-numeric:tabular-nums;background:linear-gradient(135deg,var(--cyan),var(--primary));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.plank-btns{display:flex;gap:10px;justify-content:center;margin-bottom:8px}
+.plank-btns .primary-btn.rec{background:linear-gradient(135deg,var(--red),#ff7a45)}
+.plank-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
+.plank-row:last-child{border-bottom:0}
+.plank-row b{font:700 14px var(--display);color:var(--text)}
