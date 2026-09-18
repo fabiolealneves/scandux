@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <script>try{var t=localStorage.getItem('ppv2_theme');if(t==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0a0b10">
+  <meta name="description" content="Physique Pro — acompanhamento pessoal de medidas, evolução, rotina e treino.">
+  <title>Physique Pro</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/app.css?v=20260917-5">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">P</div>
+        <div><strong>Physique Pro</strong><span>PERFORMANCE HUB</span></div>
+      </div>
+      <nav id="sideNav" class="side-nav"></nav>
+      <div class="side-status">
+        <span id="syncDot" class="status-dot"></span>
+        <div><b id="syncText">Conectando</b><small id="syncSub">Google Sheets</small></div>
+      </div>
+    </aside>
+
+    <main class="main-shell">
+      <header class="topbar">
+        <div>
+          <span class="eyebrow" id="pageEyebrow">PAINEL</span>
+          <h1 id="pageTitle">Visão Geral</h1>
+        </div>
+        <div class="top-actions">
+          <button class="ghost-btn icon-btn" id="themeBtn" type="button" title="Alternar tema" aria-label="Alternar tema">☀</button><button class="ghost-btn" id="syncBtn" type="button">Sincronizar</button>
+          <button class="primary-btn compact" id="quickAddBtn" type="button">+ Nova medição</button>
+        </div>
+      </header>
+
+      <div id="notice" class="notice" hidden></div>
+      <section id="view" class="view" aria-live="polite"></section>
+    </main>
+
+    <nav id="bottomNav" class="bottom-nav"></nav>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <input id="importInput" type="file" accept="application/json" hidden>
+  <script src="/app.js?v=20260917-5" defer></script>
+</body>
+</html>

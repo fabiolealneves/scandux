@@ -1,0 +1,13 @@
+{
+  "name": "Physique Pro",
+  "short_name": "Physique Pro",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#090b10",
+  "theme_color": "#0a0b10",
+  "description": "Acompanhamento pessoal de medidas, evolução, rotina, treino e fotos.",
+  "icons": [
+    {"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
