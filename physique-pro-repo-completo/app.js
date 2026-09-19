@@ -3,12 +3,12 @@
 
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbySBtk2dw-jCpW9R4bUW8D4ncMArMRNuemNfIBdewpX8ERURlMaukoY_TqUv_cLea-Wdg/exec';
 const LS = {
-  measures:'ppv2_measures', routine:'ppv2_routine', profile:'ppv2_profile', scans:'ppv2_scans', api:'ppv2_api',
+  measures:'ppv2_measures', routine:'ppv2_routine', profile:'ppv2_profile', scans:'ppv2_scans', weights:'ppv2_weights', api:'ppv2_api',
   legacyMeasures:'st_regs', legacyApi:'st_url'
 };
 const state = {
   view:'overview', measures:[], routine:[], profile:{altura:null,reminderInterval:14,reminderTime:'07:00'}, scans:[],
-  hevy:[], apiUrl:'', syncing:false, online:false, version:'', metric:'peso', installPrompt:null, calDate:'', calAdding:null
+  hevy:[], weights:[], apiUrl:'', syncing:false, online:false, version:'', metric:'peso', installPrompt:null, calDate:'', calAdding:null
 };
 const METRICS = [
   {k:'peso',l:'Peso',u:'kg'}, {k:'cintura',l:'Cintura',u:'cm'}, {k:'abdomen',l:'Abdômen',u:'cm'},
@@ -18,8 +18,8 @@ const METRICS = [
   {k:'quadril',l:'Quadril',u:'cm'}, {k:'bf',l:'BF estimado',u:'%',fn:r=>calcBF(r)}, {k:'ffmi',l:'FFMI estimado',u:'',fn:r=>calcFFMI(r)}
 ];
 const NAV = [
-  ['overview','Visão Geral','⌂'],['measures','Medidas','↗'],['evolution','Evolução','∿'],['add','Nova medição','＋'],
-  ['history','Histórico','◷'],['scan','Scan','▣'],['routine','Rotina','◴'],['calories','Calorias','◈'],['plank','Prancha','⏱'],['settings','Config','⚙']
+  ['overview','Visão Geral','⌂'],['weight','Peso jejum','⚖'],['measures','Medidas','↗'],['evolution','Evolução','∿'],['add','Nova medição','＋'],
+  ['history','Histórico','◷'],['scan','Scan','▣'],['routine','Rotina','◴'],['calories','Calorias','◈'],['plank','Treino','⏱'],['summary','Resumo geral','◎'],['settings','Config','⚙']
 ];
 const BOTTOM = ['overview','evolution','add','scan','routine'];
 const $ = s => document.querySelector(s);
@@ -200,13 +200,13 @@ function detectLegacy(){
   const oldUrl=localStorage.getItem(LS.legacyApi); if(!localStorage.getItem(LS.api)&&oldUrl) localStorage.setItem(LS.api,oldUrl);
 }
 function loadCache(){
-  detectLegacy(); state.measures=readJSON(LS.measures,[]); state.routine=readJSON(LS.routine,[]); state.profile=Object.assign(state.profile,readJSON(LS.profile,{})); state.scans=readJSON(LS.scans,[]);
+  detectLegacy(); state.measures=readJSON(LS.measures,[]); state.routine=readJSON(LS.routine,[]); state.profile=Object.assign(state.profile,readJSON(LS.profile,{})); state.scans=readJSON(LS.scans,[]); state.weights=readJSON(LS.weights,[]);
   state.apiUrl=localStorage.getItem(LS.api)||findApiInStorage()||DEFAULT_API; localStorage.setItem(LS.api,state.apiUrl);
   state.measures=state.measures.map(normalizeMeasure).filter(r=>r.data||r.peso).sort((a,b)=>String(a.data).localeCompare(String(b.data)));
 }
-function saveCache(){writeJSON(LS.measures,state.measures);writeJSON(LS.routine,state.routine);writeJSON(LS.profile,state.profile);writeJSON(LS.scans,state.scans)}
+function saveCache(){writeJSON(LS.measures,state.measures);writeJSON(LS.routine,state.routine);writeJSON(LS.profile,state.profile);writeJSON(LS.scans,state.scans);writeJSON(LS.weights,state.weights)}
 function findApiInStorage(){for(let i=0;i<localStorage.length;i++){const v=localStorage.getItem(localStorage.key(i))||'';if(/script\.google(usercontent)?\.com\/macros\//.test(v)&&/\/exec/.test(v))return v}return ''}
-function normalizeMeasure(r={}){const keys=['peso','altura','pescoco','cintura','abdomen','quadril','peito','ombros','bicepsD','bicepsE','antD','antE','coxaD','coxaE','panD','panE','gordura','massaMagra','ffmi'];const o={...r,data:String(r.data||'').split('T')[0]};keys.forEach(k=>{const n=num(r[k]);o[k]=n==null?0:n});o.id=String(r.id||`${o.data}_${o.peso}`);return o}
+function normalizeMeasure(r={}){const keys=['peso','altura','pescoco','cintura','abdomen','quadril','peito','ombros','bicepsD','bicepsE','antD','antE','coxaD','coxaE','panD','panE','pulso','tornozelo','gordura','massaMagra','ffmi'];const o={...r,data:String(r.data||'').split('T')[0]};keys.forEach(k=>{const n=num(r[k]);o[k]=n==null?0:n});o.id=String(r.id||`${o.data}_${o.peso}`);return o}
 
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._x);t._x=setTimeout(()=>t.classList.remove('on'),2600)}
 function setSync(ok,text,sub='Google Sheets'){state.online=ok;$('#syncDot').className='status-dot '+(ok?'ok':'err');$('#syncText').textContent=text;$('#syncSub').textContent=sub}
@@ -229,7 +229,7 @@ async function syncAll(showToast=false){
     if(boot?.success){
       if(Array.isArray(boot.medidas))state.measures=boot.medidas.map(normalizeMeasure).sort((a,b)=>String(a.data).localeCompare(String(b.data)));
       if(Array.isArray(boot.rotina))state.routine=boot.rotina;
-      if(Array.isArray(boot.scans))state.scans=boot.scans;
+      if(Array.isArray(boot.scans))state.scans=boot.scans;if(Array.isArray(boot.pesojejum))state.weights=boot.pesojejum;
       if(Array.isArray(boot.perfil)&&boot.perfil[0])state.profile=Object.assign(state.profile,boot.perfil[0]);
       state.version=boot._version||''; ok=true;
     }else{
@@ -245,11 +245,14 @@ async function syncAll(showToast=false){
 
 function buildNav(){
   $('#sideNav').innerHTML=NAV.map(([id,l,i])=>`<button class="nav-btn ${state.view===id?'on':''}" data-view="${id}"><span class="nav-ic">${i}</span>${l}</button>`).join('');
+  const dn=$('#drawerNav');if(dn)dn.innerHTML=NAV.map(([id,l,i])=>`<button class="nav-btn ${state.view===id?'on':''}" data-view="${id}"><span class="nav-ic">${i}</span>${l}</button>`).join('');
   $('#bottomNav').innerHTML=BOTTOM.map(id=>{const n=NAV.find(x=>x[0]===id);return `<button class="${state.view===id?'on':''}" data-view="${id}">${n[2]}<br>${n[1]}</button>`}).join('');
   $$('[data-view]').forEach(b=>b.onclick=()=>go(b.dataset.view));
 }
-function go(v){stopPlank();state.view=v;const n=NAV.find(x=>x[0]===v);$('#pageTitle').textContent=n?.[1]||'Physique Pro';$('#pageEyebrow').textContent=v==='overview'?'PAINEL':'PHYSIQUE PRO';buildNav();render();window.scrollTo({top:0,behavior:'smooth'})}
-function render(){buildNav(); const f={overview:renderOverview,measures:renderMeasures,evolution:renderEvolution,add:renderAdd,history:renderHistory,scan:renderScan,routine:renderRoutine,calories:renderCalories,plank:renderPlank,settings:renderSettings}[state.view]||renderOverview;f()}
+function openDrawer(){const d=$('#drawer');if(d){d.hidden=false;requestAnimationFrame(()=>d.classList.add('open'))}}
+function closeDrawer(){const d=$('#drawer');if(d){d.classList.remove('open');setTimeout(()=>{d.hidden=true},220)}}
+function go(v){stopPlank();closeDrawer();state.view=v;const n=NAV.find(x=>x[0]===v);$('#pageTitle').textContent=n?.[1]||'Physique Pro';$('#pageEyebrow').textContent=v==='overview'?'PAINEL':'PHYSIQUE PRO';buildNav();render();window.scrollTo({top:0,behavior:'smooth'})}
+function render(){buildNav(); const f={overview:renderOverview,weight:renderWeight,measures:renderMeasures,evolution:renderEvolution,add:renderAdd,history:renderHistory,scan:renderScan,routine:renderRoutine,calories:renderCalories,plank:renderPlank,summary:renderSummary,settings:renderSettings}[state.view]||renderOverview;f()}
 function empty(title,desc,action='add',label='Nova medição'){return `<div class="card empty"><div class="empty-ic">＋</div><h3>${esc(title)}</h3><p>${esc(desc)}</p><button class="primary-btn" data-go="${action}">${esc(label)}</button></div>`}
 function wireGo(){$$('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go))}
 
@@ -312,6 +315,9 @@ function overviewInsightBlock(){
     return html;
   }catch{return ''}
 }
+function quickWeighToday(){const w=(state.weights||[]).find(x=>String(x.data).slice(0,10)===today());return w?num(w.peso):null}
+function quickWeighCard(){const t=quickWeighToday();return `<div class="card pad quickweigh"><div class="quickweigh-txt"><span class="eyebrow">PESO DE HOJE · JEJUM</span><p class="quickweigh-sub">${t!=null?`✓ Registrado: <b>${fmt(t)} kg</b> — pode atualizar`:'Primeira coisa do dia. Peso completo + bioimpedância na aba Peso jejum.'}</p></div><div class="quickweigh-in"><input id="qwPeso" type="number" inputmode="decimal" step="0.1" placeholder="kg" value="${t!=null?fmt(t):''}"><button class="primary-btn" id="qwSave">Salvar</button></div></div>`}
+async function saveQuickWeigh(){const p=num($('#qwPeso').value);if(p==null){toast('Informe o peso');return}const i=(state.weights||[]).findIndex(w=>String(w.data).slice(0,10)===today());const base=i>=0?state.weights[i]:{};const rec={...base,id:today(),data:today(),peso:p,jejum:true,hora:base.hora||new Date().toTimeString().slice(0,5)};if(i>=0)state.weights[i]=rec;else(state.weights=state.weights||[]).push(rec);saveCache();toast('Peso do dia salvo');const res=await apiPost('weight_upsert',rec);if(res?.success)toast('Sincronizado');renderOverview()}
 function renderOverview(){
   const v=$('#view'); if(!state.measures.length){v.innerHTML=empty('Seu painel está pronto','Conecte seus dados e registre uma medição para começar.');wireGo();return}
   const [st,sd]=overviewStatus(),a=last(),days=Math.floor((Date.now()-new Date(a.data+'T12:00:00'))/864e5),fresh=Math.max(0,Math.min(100,100-(days*4)));
@@ -319,12 +325,13 @@ function renderOverview(){
   const kp=[['Peso',fmt(a.peso)+' kg',metricDelta('peso')],['Cintura',fmt(wa)+' cm',metricDelta('cintura')],['BF estimado',bf==null?'—':fmt(bf)+' %','estimativa por medidas'],['FFMI estimado',ff==null?'—':fmt(ff),'contexto de composição']];
   const recent=METRICS.slice(0,10).map(m=>metricCard(m)).join('');
   v.innerHTML=`<div class="card hero"><div><span class="eyebrow">RESUMO ATUAL</span><h2>${esc(st)}</h2><p>${esc(sd)}</p></div><div class="hero-ring" style="--pct:${fresh}%"><div><b>${fresh}%</b><small>ATUALIDADE</small></div></div></div>
+  ${quickWeighCard()}
   ${overviewInsightBlock()}
   <div class="grid cols-4" style="margin-top:14px">${kp.map(x=>`<div class="card kpi"><div class="label">${x[0]}</div><div class="value">${x[1]}</div><div class="meta">${x[2]}</div></div>`).join('')}</div>
   <div class="section-head"><div><h3>Últimas medidas</h3><p>${fmtDate(a.data)} · ${state.measures.length} registros no histórico</p></div><span class="link" data-go="measures">Ver todas</span></div>
   <div class="grid cols-3">${recent}</div>
   <div class="section-head"><div><h3>Próximas ações</h3><p>O app prioriza consistência de registro e comparação com seu próprio histórico.</p></div></div>
-  <div class="grid cols-3">${actionCard('Registrar novamente','Use o mesmo horário e os mesmos pontos de referência.','add')}${actionCard('Analisar evolução','Veja tendência, taxa e confiança em uma única tela.','evolution')}${actionCard('Fotos comparáveis','Repita frente, lateral e costas com enquadramento semelhante.','scan')}</div>`;wireGo()
+  <div class="grid cols-3">${actionCard('Registrar novamente','Use o mesmo horário e os mesmos pontos de referência.','add')}${actionCard('Analisar evolução','Veja tendência, taxa e confiança em uma única tela.','evolution')}${actionCard('Fotos comparáveis','Repita frente, lateral e costas com enquadramento semelhante.','scan')}</div>`;wireGo();const qw=$('#qwSave');if(qw)qw.onclick=saveQuickWeigh
 }
 function metricDelta(k){const m=metric(k),d=m?delta(m):null;return d==null?'sem comparação':`${d>0?'+':''}${fmt(d)} ${m.u} desde o anterior`}
 function actionCard(t,d,g){return `<div class="card pad"><b style="font:700 13px var(--display)">${t}</b><p style="color:var(--muted);font-size:10px;line-height:1.55">${d}</p><button class="ghost-btn" data-go="${g}">Abrir</button></div>`}
@@ -408,7 +415,7 @@ function renderAdd(){
   const a=last()||{},h=state.profile.altura||a.altura||''; $('#view').innerHTML=`<form id="measureForm" class="form-shell"><div class="card form-card">
   ${formSection('Essenciais',`<div class="fields">${field('Data','data','date',today(),true)}${field('Peso (kg)','peso','number','',true,'0.1')}${field('Altura (cm)','altura','number',h,true,'0.5')}${field('Pescoço (cm)','pescoco','number','',true,'0.5')}</div>`)}
   ${formSection('Tronco',`<p class="form-help">Cintura: ponto mais estreito. Abdômen: altura do umbigo. Quadril: maior circunferência.</p><div class="fields">${field('Cintura (cm)','cintura','number','',false,'0.5')}${field('Abdômen (cm)','abdomen','number','',false,'0.5')}${field('Quadril (cm)','quadril','number','',false,'0.5')}${field('Peitoral (cm)','peito','number','',false,'0.5')}${field('Ombros (cm)','ombros','number','',false,'0.5')}</div>`)}
-  ${formSection('Braços e pernas',`<div class="fields">${field('Bíceps D','bicepsD','number','',false,'0.5')}${field('Bíceps E','bicepsE','number','',false,'0.5')}${field('Antebraço D','antD','number','',false,'0.5')}${field('Antebraço E','antE','number','',false,'0.5')}${field('Coxa D','coxaD','number','',false,'0.5')}${field('Coxa E','coxaE','number','',false,'0.5')}${field('Panturrilha D','panD','number','',false,'0.5')}${field('Panturrilha E','panE','number','',false,'0.5')}</div>`)}
+  ${formSection('Braços e pernas',`<div class="fields">${field('Bíceps D','bicepsD','number','',false,'0.5')}${field('Bíceps E','bicepsE','number','',false,'0.5')}${field('Antebraço D','antD','number','',false,'0.5')}${field('Antebraço E','antE','number','',false,'0.5')}${field('Coxa D','coxaD','number','',false,'0.5')}${field('Coxa E','coxaE','number','',false,'0.5')}${field('Panturrilha D','panD','number','',false,'0.5')}${field('Panturrilha E','panE','number','',false,'0.5')}${field('Pulso','pulso','number','',false,'0.5')}${field('Tornozelo','tornozelo','number','',false,'0.5')}</div>`)}
   ${formSection('Observações',`<div class="field"><label>Notas do registro</label><textarea name="notas" placeholder="Contexto do dia, horário, treino, retenção, observações..."></textarea></div>`)}
   <button class="primary-btn" type="submit" style="width:100%;margin-top:16px">Salvar medição</button></div>
   <aside class="card sticky-card"><span class="eyebrow">ONDE MEDIR</span><div class="body-holo-wrap sm">${bodyHologram(null,{mode:'add'})}</div><p class="body-hint">Toque num campo ao lado para acender o ponto exato. Cintura é o ponto mais estreito; abdômen na altura do umbigo; quadril na maior circunferência.</p><div class="calc-divider"></div><h3 style="font:700 16px var(--display);margin:2px 0 12px">Cálculos automáticos</h3><div id="liveCalc">${calcPreview({})}</div><p style="color:var(--muted2);font-size:9px;line-height:1.55;margin-top:14px">BF e FFMI são estimativas matemáticas baseadas nas medidas registradas. Use principalmente para acompanhar consistência ao longo do tempo.</p></aside></form>`;
@@ -611,25 +618,35 @@ function plankBest(){try{const v=state.routine.map(x=>num(x.prancha)).filter(n=>
 function plankTodaySec(){return num(routineToday().prancha)||0}
 function stopPlank(){if(plankInt){clearInterval(plankInt);plankInt=null}}
 async function mergeRoutineToday(patch){const i=state.routine.findIndex(x=>String(x.id)===today()||String(x.data).slice(0,10)===today());const base=i>=0?state.routine[i]:{id:today(),data:today()};const r={...base,...patch,id:today(),data:today()};i>=0?state.routine[i]=r:state.routine.push(r);saveCache();return apiPost('routine_upsert',r)}
+function caloriesBurned(dk){const r=state.routine.find(x=>String(x.data).slice(0,10)===dk);return (num(r?.calorias)||0)+(num(r?.spinKcal)||0)}
+function spinToday(){const r=routineToday();return{min:num(r.spinMin)||0,kcal:num(r.spinKcal)||0}}
 function renderPlank(){
-  const best=plankBest(),td=plankTodaySec();
+  const best=plankBest(),td=plankTodaySec(),meta=best||60,C=2*Math.PI*64;
+  const spin=spinToday();
+  const spinHist=state.routine.filter(x=>num(x.spinMin)>0||num(x.spinKcal)>0).sort((a,b)=>String(b.data).localeCompare(String(a.data))).slice(0,6);
   const hist=state.routine.filter(x=>num(x.prancha)>0).sort((a,b)=>String(b.data).localeCompare(String(a.data))).slice(0,6);
   plankSec=0;
-  $('#view').innerHTML=`<div class="card pad" style="text-align:center"><span class="eyebrow">CONTADOR DE PRANCHA</span>
-   <div class="plank-time" id="plankTime">0:00</div>
+  $('#view').innerHTML=`<div class="card pad" style="text-align:center"><span class="eyebrow">PRANCHA ISOMÉTRICA</span>
+   <div class="plank-ring-wrap"><svg viewBox="0 0 160 160" class="plank-ring"><defs><linearGradient id="plg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#37e6ff"/><stop offset="1" stop-color="#7c5cff"/></linearGradient></defs><circle cx="80" cy="80" r="64" fill="none" stroke="var(--panel3)" stroke-width="12"/><circle id="plankRing" cx="80" cy="80" r="64" fill="none" stroke="url(#plg)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${C.toFixed(1)}" transform="rotate(-90 80 80)"/></svg><div class="plank-ring-center"><b id="plankTime">0:00</b><small>meta ${plankFmt(meta)}</small></div></div>
    <div class="plank-btns"><button class="primary-btn" id="plankToggle">Iniciar</button><button class="ghost-btn" id="plankReset">Zerar</button></div>
-   <p class="body-hint">Segure a prancha e pare o cronômetro ao terminar. O melhor tempo do dia é salvo e sincronizado.</p></div>
+   <p class="body-hint">O anel enche até a sua meta (o recorde atual). O melhor tempo do dia é salvo.</p></div>
    <div class="grid cols-2" style="margin-top:14px"><div class="card kpi"><div class="label">RECORDE</div><div class="value">${best?plankFmt(best):'—'}</div><div class="meta">seu maior tempo</div></div><div class="card kpi"><div class="label">HOJE</div><div class="value">${td?plankFmt(td):'—'}</div><div class="meta">melhor de hoje</div></div></div>
-   ${hist.length?`<div class="section-head"><div><h3>Últimos registros</h3><p>Toque num dia para conferir</p></div></div><div class="card pad">${hist.map(x=>`<div class="plank-row"><span>${fmtDate(String(x.data).slice(0,10))}</span><b>${plankFmt(num(x.prancha))}</b></div>`).join('')}</div>`:''}`;
+   ${hist.length?`<div class="section-head"><div><h3>Prancha · últimos dias</h3></div></div><div class="card pad">${hist.map(x=>`<div class="plank-row"><span>${fmtDate(String(x.data).slice(0,10))}</span><b>${plankFmt(num(x.prancha))}</b></div>`).join('')}</div>`:''}
+   <div class="section-head"><div><h3>Bike / Spinning</h3><p>Registre o pedal do dia — as calorias abatem no seu balanço</p></div></div>
+   <div class="card pad"><div class="grid cols-2"><div class="card kpi"><div class="label">HOJE (MIN)</div><div class="value">${spin.min||'—'}</div><div class="meta">minutos pedalados</div></div><div class="card kpi"><div class="label">HOJE (KCAL)</div><div class="value">${spin.kcal||'—'}</div><div class="meta">gasto estimado</div></div></div>
+   <div class="spin-form"><input id="spinMin" type="number" inputmode="numeric" placeholder="minutos"><input id="spinKcal" type="number" inputmode="numeric" placeholder="kcal (auto se vazio)"><button class="primary-btn" id="spinAdd">Adicionar sessão</button></div>
+   <p class="body-hint">Some cada sessão. Se deixar kcal vazio, estimo ~8 kcal/min.</p></div>
+   ${spinHist.length?`<div class="card pad" style="margin-top:12px">${spinHist.map(x=>`<div class="plank-row"><span>${fmtDate(String(x.data).slice(0,10))}</span><b>${num(x.spinMin)||0} min · ${num(x.spinKcal)||0} kcal</b></div>`).join('')}</div>`:''}`;
   const tog=$('#plankToggle');
   tog.onclick=async()=>{
     if(plankInt){stopPlank();
       if(plankSec>0&&plankSec>td){await mergeRoutineToday({prancha:plankSec});toast('Novo recorde do dia salvo!')}
       else if(plankSec>0)toast(`Tempo: ${plankFmt(plankSec)} (menor que o de hoje)`);
       renderPlank();
-    }else{plankInt=setInterval(()=>{plankSec++;const el=$('#plankTime');if(el)el.textContent=plankFmt(plankSec)},1000);tog.textContent='Parar';tog.classList.add('rec')}
+    }else{plankInt=setInterval(()=>{plankSec++;const el=$('#plankTime');if(el)el.textContent=plankFmt(plankSec);const rg=$('#plankRing');if(rg)rg.style.strokeDashoffset=(C*(1-Math.min(plankSec/meta,1))).toFixed(1)},1000);tog.textContent='Parar';tog.classList.add('rec')}
   };
   $('#plankReset').onclick=()=>{stopPlank();plankSec=0;renderPlank()};
+  $('#spinAdd').onclick=async()=>{const min=num($('#spinMin').value)||0;let kcal=num($('#spinKcal').value);if(!min&&!kcal){toast('Informe minutos ou kcal');return}if(kcal==null&&min)kcal=Math.round(min*8);const cur=routineToday();await mergeRoutineToday({spinMin:(num(cur.spinMin)||0)+min,spinKcal:(num(cur.spinKcal)||0)+Math.round(kcal||0)});toast('Sessão de bike adicionada');renderPlank()};
 }
 /* ===== Contador de calorias (ingeridas) — local, funciona offline ===== */
 const CAL_MEALS=[['cafe','Café da manhã','☀'],['almoco','Almoço','◐'],['jantar','Jantar','☾'],['lanche','Lanches','◦']];
@@ -654,8 +671,9 @@ function renderCalories(){
   const dk=state.calDate||today();state.calDate=dk;
   const entries=calEntries(dk),goals=calGoals();
   const tot=entries.reduce((a,e)=>({calories:a.calories+(+e.calories||0),protein:a.protein+(+e.protein||0),carbs:a.carbs+(+e.carbs||0),fat:a.fat+(+e.fat||0)}),{calories:0,protein:0,carbs:0,fat:0});
-  const remaining=Math.round(goals.calories-tot.calories),over=tot.calories>goals.calories;
-  const R=54,C=2*Math.PI*R,off=C*(1-Math.min(goals.calories>0?tot.calories/goals.calories:0,1));
+  const burned=caloriesBurned(dk),liquido=Math.round(tot.calories-burned);
+  const remaining=Math.round(goals.calories-tot.calories+burned),over=liquido>goals.calories;
+  const R=54,C=2*Math.PI*R,off=C*(1-Math.min(goals.calories>0?liquido/goals.calories:0,1));
   const isToday=dk===today();
   const label=(()=>{const y=new Date(Date.now()-864e5).toISOString().slice(0,10);if(dk===today())return 'Hoje';if(dk===y)return 'Ontem';return fmtDate(dk)})();
   const ring=`<svg width="150" height="150" viewBox="0 0 150 150"><circle cx="75" cy="75" r="${R}" fill="none" stroke="var(--panel3)" stroke-width="13"/><circle cx="75" cy="75" r="${R}" fill="none" stroke="${over?'#f43f5e':'var(--cyan)'}" stroke-width="13" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}" transform="rotate(-90 75 75)"/><text x="75" y="72" text-anchor="middle" style="font:800 30px var(--display);fill:var(--text)">${Math.abs(remaining)}</text><text x="75" y="90" text-anchor="middle" style="font:600 10px var(--font);fill:var(--muted)">${over?'ACIMA':'RESTANTES'}</text></svg>`;
@@ -668,7 +686,7 @@ function renderCalories(){
   }).join('');
   const goalsForm=state.calAdding==='goals'?`<div class="card pad"><div class="section-head" style="margin:0 0 10px"><div><h3>Metas diárias</h3></div></div><div class="cal-goals"><label>Calorias<input id="cg-cal" type="number" value="${goals.calories}"></label><label>Proteína<input id="cg-p" type="number" value="${goals.protein}"></label><label>Carbo<input id="cg-c" type="number" value="${goals.carbs}"></label><label>Gordura<input id="cg-f" type="number" value="${goals.fat}"></label></div><div class="cal-form-btns" style="margin-top:12px"><button class="primary-btn" id="cg-save">Salvar metas</button><button class="ghost-btn" id="cg-cancel">Cancelar</button></div></div>`:'';
   $('#view').innerHTML=`<div class="card pad"><div class="cal-daynav"><button class="cal-arrow" id="cal-prev">‹</button><b>${label}</b><button class="cal-arrow" id="cal-next" ${isToday?'disabled':''}>›</button></div>
-   <div class="cal-hero">${ring}<div class="cal-hero-side">${macros}<div class="cal-consumed">${Math.round(tot.calories)} de ${goals.calories} kcal</div></div></div>
+   <div class="cal-hero">${ring}<div class="cal-hero-side">${macros}<div class="cal-consumed">${Math.round(tot.calories)} ingeridas${burned>0?` − ${burned} gastas = <b>${liquido}</b>`:''} de ${goals.calories} kcal</div></div></div>
    <button class="ghost-btn" id="cal-goalsbtn" style="width:100%;margin-top:12px">Ajustar metas</button></div>
    ${goalsForm}
    <div class="cal-meals">${meals}</div>`;
@@ -682,6 +700,74 @@ function renderCalories(){
   const save=$('#cf-save');if(save)save.onclick=()=>{const name=($('#cf-name').value||'').trim(),kcal=num($('#cf-kcal').value);if(!name||kcal==null){toast('Informe nome e calorias');return}calAdd(dk,{id:'c'+Date.now()+Math.random().toString(36).slice(2,6),meal:save.dataset.meal,name,calories:Math.max(0,Math.round(kcal)),protein:Math.max(0,Math.round(num($('#cf-p').value)||0)),carbs:Math.max(0,Math.round(num($('#cf-c').value)||0)),fat:Math.max(0,Math.round(num($('#cf-f').value)||0))});state.calAdding=null;toast('Adicionado');renderCalories()};
   const gsave=$('#cg-save');if(gsave)gsave.onclick=()=>{calGoalsSet({calories:Math.max(0,Math.round(num($('#cg-cal').value)||CAL_GOAL_DEF.calories)),protein:Math.max(0,Math.round(num($('#cg-p').value)||0)),carbs:Math.max(0,Math.round(num($('#cg-c').value)||0)),fat:Math.max(0,Math.round(num($('#cg-f').value)||0))});state.calAdding=null;toast('Metas salvas');renderCalories()};
   const gcancel=$('#cg-cancel');if(gcancel)gcancel.onclick=()=>{state.calAdding=null;renderCalories()};
+}
+/* ===== Peso em jejum (separado das medidas) ===== */
+const BIO_FIELDS=[['gordura','Gordura','%'],['musculo','Músculo','%'],['agua','Água','%'],['visceral','G. visceral',''],['imc','IMC',''],['tmb','TMB','kcal'],['idadeCorporal','Idade corp.',''],['massaOssea','Massa óssea','kg'],['proteina','Proteína','%']];
+function weightSeries(){return (state.weights||[]).map(w=>({date:String(w.data).slice(0,10),v:num(w.peso)})).filter(x=>x.v!=null&&x.date).sort((a,b)=>a.date.localeCompare(b.date))}
+function movingAvg(arr,win){return arr.map((p,i)=>{const s=arr.slice(Math.max(0,i-win+1),i+1);return{date:p.date,v:+(s.reduce((a,b)=>a+b.v,0)/s.length).toFixed(2)}})}
+function weightChart(s){
+  if(s.length<2)return '<div class="empty" style="padding:22px"><h3>Poucos dados</h3><p>Registre pesagens em dias diferentes para ver a linha e a média móvel.</p></div>';
+  const W=320,H=150,pad=10,vals=s.map(p=>p.v),mn=Math.min(...vals),mx=Math.max(...vals),rng=(mx-mn)||1,pd=rng*0.15;
+  const lo=mn-pd,hi=mx+pd,x=i=>pad+(i/(s.length-1))*(W-2*pad),y=v=>H-pad-((v-lo)/(hi-lo))*(H-2*pad);
+  const ma=movingAvg(s,7);
+  const line=a=>a.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
+  const dots=s.map((p,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="2" fill="var(--cyan)" opacity=".6"/>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" class="wchart"><path d="${line(s)}" fill="none" stroke="var(--cyan)" stroke-width="1" opacity=".45"/>${dots}<path d="${line(ma)}" fill="none" stroke="var(--primary)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <div class="wchart-leg"><span><i style="background:var(--cyan);opacity:.6"></i>peso do dia</span><span><i style="background:var(--primary)"></i>média 7 dias</span></div>`;
+}
+function renderWeight(){
+  const s=weightSeries(),last=(state.weights||[]).slice().sort((a,b)=>String(b.data).localeCompare(String(a.data)))[0];
+  const lastTxt=last?`${fmt(num(last.peso))} kg · ${fmtDate(String(last.data).slice(0,10))}${last.hora?' '+esc(last.hora):''}${(''+last.jejum)==='true'||last.jejum==='sim'||last.jejum===true?' · em jejum ✓':''}`:'nenhuma pesagem ainda';
+  const bio=BIO_FIELDS.map(([k,l,u])=>`<div class="field"><label>${l}${u?` (${u})`:''}</label><input name="w_${k}" type="number" inputmode="decimal" step="0.1"></div>`).join('');
+  $('#view').innerHTML=`<div class="card pad weigh-hero"><span class="eyebrow">PESAGEM EM JEJUM</span><p style="color:var(--muted);font-size:12px;margin:6px 0 0">Primeira coisa do dia, sempre no mesmo horário. Fica separado das medidas para não picotar os gráficos.</p><div class="weigh-last">Última: <b>${esc(lastTxt)}</b></div></div>
+  <form id="weighForm" class="card pad" style="margin-top:14px">
+    <div class="weigh-main"><div class="field"><label>Peso (kg) *</label><input name="w_peso" type="number" inputmode="decimal" step="0.1" required></div><div class="field"><label>Hora</label><input name="w_hora" type="time" value="${new Date().toTimeString().slice(0,5)}"></div></div>
+    <div class="section-head" style="margin:14px 0 8px"><div><h3>Dados da balança (opcional)</h3><p>Copie do app Fitdays / RelaxFit após a pesagem Bluetooth</p></div></div>
+    <div class="fields">${bio}</div>
+    <div class="weigh-checks"><label><input type="checkbox" name="w_jejum" checked> Em jejum</label><label><input type="checkbox" name="w_banheiro"> Fui ao banheiro antes</label></div>
+    <div class="field" style="margin-top:10px"><label>Observação</label><textarea name="w_obs"></textarea></div>
+    <button class="primary-btn" type="submit" style="margin-top:12px">Registrar pesagem</button>
+  </form>
+  <div class="section-head"><div><h3>Peso diário</h3><p>Linha fina = dia · linha forte = média móvel de 7 dias</p></div></div><div class="card pad">${weightChart(s)}</div>
+  ${s.length?`<div class="section-head"><div><h3>Histórico</h3></div></div><div class="card pad">${(state.weights||[]).slice().sort((a,b)=>String(b.data).localeCompare(String(a.data))).slice(0,10).map(w=>`<div class="plank-row"><span>${fmtDate(String(w.data).slice(0,10))}</span><b>${fmt(num(w.peso))} kg</b></div>`).join('')}</div>`:''}`;
+  $('#weighForm').onsubmit=saveWeight;
+}
+async function saveWeight(e){
+  e.preventDefault();const f=e.currentTarget,d=Object.fromEntries(new FormData(f));
+  const peso=num(d.w_peso);if(peso==null){toast('Informe o peso');return}
+  const rec={id:today(),data:today(),hora:d.w_hora||'',peso,jejum:f.querySelector('[name="w_jejum"]').checked,banheiro:f.querySelector('[name="w_banheiro"]').checked,obs:d.w_obs||''};
+  BIO_FIELDS.forEach(([k])=>{const v=num(d['w_'+k]);if(v!=null)rec[k]=v});
+  const i=(state.weights||[]).findIndex(w=>String(w.id)===today()||String(w.data).slice(0,10)===today());
+  if(i>=0)state.weights[i]=rec;else(state.weights=state.weights||[]).push(rec);
+  saveCache();toast('Pesagem salva');const res=await apiPost('weight_upsert',rec);if(res?.success)toast('Sincronizado');renderWeight();
+}
+/* ===== Resumo geral (dashboard) ===== */
+function bfZone(bf){if(bf==null)return '—';if(bf<6)return'essencial';if(bf<14)return'atlético';if(bf<18)return'fitness';if(bf<25)return'aceitável';return'alto'}
+function ffmiZone(ff){if(ff==null)return '—';if(ff<18)return'abaixo da média';if(ff<20)return'normal';if(ff<22)return'atlético';if(ff<23)return'musculoso';if(ff<25)return'muito musculoso';return'excepcional (≥ teto natural)'}
+function bfBar(bf){if(bf==null)return '';const lo=4,hi=30,pos=Math.max(0,Math.min(100,(bf-lo)/(hi-lo)*100)),tgt=(11-lo)/(hi-lo)*100;return `<div class="bf-bar"><span class="bf-fill" style="width:${pos}%"></span><span class="bf-target" style="left:${tgt}%"></span></div>`}
+function reeves(r){const out=[],g=v=>num(v),braco=avg(r.bicepsD,r.bicepsE),pan=avg(r.panD,r.panE),pulso=g(r.pulso),torn=g(r.tornozelo),peito=g(r.peito),cint=g(r.cintura),quad=g(r.quadril),omb=g(r.ombros);
+  if(pulso&&braco)out.push(['Braço vs pulso',braco,+(pulso*2.52).toFixed(1),'cm']);
+  if(torn&&pan)out.push(['Panturrilha vs tornozelo',pan,+(torn*1.92).toFixed(1),'cm']);
+  if(quad&&peito)out.push(['Peito vs quadril',peito,+(quad*1.48).toFixed(1),'cm']);
+  if(quad&&cint)out.push(['Cintura vs quadril',cint,+(quad*0.86).toFixed(1),'cm']);
+  if(omb&&cint)out.push(['Ombro ÷ cintura (áureo)',+(omb/cint).toFixed(2),1.62,'']);
+  return out}
+function compositionBars(weights){const wb=(weights||[]).filter(w=>num(w.gordura)!=null&&num(w.gordura)>0).sort((a,b)=>String(a.data).localeCompare(String(b.data))).slice(-8);if(!wb.length)return null;
+  return wb.map(w=>{const g=num(w.gordura)||0,m=num(w.musculo)||0,a=num(w.agua)||0,tot=(g+m+a)||1;return `<div class="comp-bar"><div class="comp-stack"><span style="height:${(g/tot*100).toFixed(1)}%;background:#f59e0b"></span><span style="height:${(m/tot*100).toFixed(1)}%;background:#10b981"></span><span style="height:${(a/tot*100).toFixed(1)}%;background:#3b82f6"></span></div><small>${fmtDate(String(w.data).slice(0,10)).slice(0,5)}</small></div>`}).join('')}
+function renderSummary(){
+  const a=last(),bf=a?calcBF(a):null,ff=a?calcFFMI(a):null,lbm=a?calcLBM(a):null;
+  const wlast=(state.weights||[]).slice().sort((x,y)=>String(y.data).localeCompare(String(x.data)))[0],pesoJejum=wlast?num(wlast.peso):null;
+  const dk=today(),ing=calEntries(dk).reduce((s,e)=>s+(+e.calories||0),0),burned=caloriesBurned(dk),liqCal=Math.round(ing-burned);
+  const rp=reeves(a||{}),comp=compositionBars(state.weights);
+  const kpis=[['PESO JEJUM',pesoJejum!=null?fmt(pesoJejum)+' kg':'—'],['BF ESTIMADO',bf!=null?fmt(bf)+' %':'—'],['FFMI',ff!=null?fmt(ff):'—'],['CALORIAS HOJE',ing?liqCal+' kcal':'—'],['MASSA MAGRA',lbm!=null?fmt(lbm)+' kg':'—'],['PRANCHA',plankBest()?plankFmt(plankBest()):'—']];
+  $('#view').innerHTML=`${weeklyReportCard()||'<div class="card pad"><span class="eyebrow">RESUMO DA SEMANA</span><p class="body-hint" style="text-align:left;margin-top:8px">Registre pesagens, treino e nutrição para o resumo aparecer.</p></div>'}
+   <div class="grid cols-3" style="margin-top:14px">${kpis.map(k=>`<div class="card kpi"><div class="label">${k[0]}</div><div class="value" style="font-size:19px">${k[1]}</div></div>`).join('')}</div>
+   <div class="section-head"><div><h3>Gordura corporal</h3><p>Onde você está e o alvo (~11% para definição)</p></div></div>
+   <div class="card pad">${bf!=null?`<div class="bf-head"><b>${fmt(bf)}%</b><span class="status-pill ${bf<18?'up':bf<25?'flat':'low'}">${bfZone(bf)}</span></div>${bfBar(bf)}<div class="bf-scale"><span>4%</span><span>alvo 11%</span><span>30%</span></div>`:'<p class="body-hint" style="text-align:left">Registre peso, altura, pescoço e cintura para estimar o BF.</p>'}</div>
+   <div class="section-head"><div><h3>FFMI · massa magra</h3><p>Quão musculoso você é (teto natural ~25)</p></div></div>
+   <div class="card pad">${ff!=null?`<div class="bf-head"><b>${fmt(ff)}</b><span class="status-pill ${ff>=22?'up':'flat'}">${ffmiZone(ff)}</span></div><p class="body-hint" style="text-align:left;margin-top:8px">Massa magra: ${lbm!=null?fmt(lbm)+' kg':'—'}. Referência: 20–22 atlético · 22–24 musculoso · ~25 limite natural.</p>`:'<p class="body-hint" style="text-align:left">Sem dados suficientes.</p>'}</div>
+   ${rp.length?`<div class="section-head"><div><h3>Proporções — Steve Reeves</h3><p>O "Grecian Ideal" clássico, pela sua estrutura</p></div></div><div class="card pad">${rp.map(([nome,atual,ideal,u])=>{const pct=ideal?Math.round(atual/ideal*100):0,cls=pct>=95&&pct<=108?'up':(pct<95?'low':'flat');return `<div class="reeves-row"><div class="reeves-top"><span>${nome}</span><b>${fmt(atual,u?1:2)}${u} <small style="color:var(--muted2)">/ ideal ${fmt(ideal,u?1:2)}${u}</small></b></div><div class="reeves-bar"><span class="${cls}" style="width:${Math.min(100,pct)}%"></span></div></div>`}).join('')}<p class="body-hint" style="text-align:left;margin-top:10px">Adicione pulso e tornozelo na Nova medição para liberar braço e panturrilha.</p></div>`:''}
+   ${comp?`<div class="section-head"><div><h3>Composição corporal</h3><p>Da bioimpedância — evolução</p></div></div><div class="card pad"><div class="comp-chart">${comp}</div><div class="comp-leg"><span><i style="background:#f59e0b"></i>gordura</span><span><i style="background:#10b981"></i>músculo</span><span><i style="background:#3b82f6"></i>água</span></div></div>`:''}`;
 }
 function renderSettings(){
   $('#view').innerHTML=`<div class="settings-grid"><div class="card settings-card"><h3>Banco de dados</h3><div class="field"><label>URL do Apps Script (/exec)</label><input id="apiInput" value="${esc(state.apiUrl)}"></div><div class="action-row" style="margin-top:10px"><button class="primary-btn" id="saveApi">Salvar e testar</button><button class="ghost-btn" id="syncNow">Sincronizar</button></div><p>Compatível com o backend antigo (get/upsert) e com o banco novo (bootstrap + datasets).</p></div>
@@ -701,6 +787,10 @@ function boot(){
   applyTheme(localStorage.getItem('ppv2_theme')||'dark');
   loadCache();buildNav();$('#syncBtn').onclick=()=>syncAll(true);$('#quickAddBtn').onclick=()=>go('add');$('#importInput').onchange=e=>e.target.files?.[0]&&importBackup(e.target.files[0]);
   const tb=$('#themeBtn');if(tb)tb.onclick=toggleTheme;
+  const mb=$('#menuBtn');if(mb)mb.onclick=openDrawer;
+  const dov=$('#drawerOverlay');if(dov)dov.onclick=closeDrawer;
+  const ds=$('#drawerSync');if(ds)ds.onclick=()=>{closeDrawer();syncAll(true)};
+  const dt=$('#drawerTheme');if(dt)dt.onclick=toggleTheme;
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();state.installPrompt=e});
   if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
   render();syncAll(false);

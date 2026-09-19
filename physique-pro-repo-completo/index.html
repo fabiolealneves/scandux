@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/app.css?v=20260919-1">
+  <link rel="stylesheet" href="/app.css?v=20260919-5">
 </head>
 <body>
   <div class="app-shell">
@@ -33,6 +33,7 @@
 
     <main class="main-shell">
       <header class="topbar">
+        <button class="hamburger" id="menuBtn" type="button" aria-label="Abrir menu">☰</button>
         <div>
           <span class="eyebrow" id="pageEyebrow">PAINEL</span>
           <h1 id="pageTitle">Visão Geral</h1>
@@ -48,10 +49,22 @@
     </main>
 
     <nav id="bottomNav" class="bottom-nav"></nav>
+
+    <div id="drawer" class="drawer" hidden>
+      <div class="drawer-overlay" id="drawerOverlay"></div>
+      <aside class="drawer-panel">
+        <div class="brand"><div class="brand-mark">P</div><div><strong>Physique Pro</strong><span>PERFORMANCE HUB</span></div></div>
+        <nav id="drawerNav" class="drawer-nav"></nav>
+        <div class="drawer-actions">
+          <button class="ghost-btn" id="drawerSync" type="button">Sincronizar</button>
+          <button class="ghost-btn" id="drawerTheme" type="button">Tema claro/escuro</button>
+        </div>
+      </aside>
+    </div>
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <input id="importInput" type="file" accept="application/json" hidden>
-  <script src="/app.js?v=20260919-1" defer></script>
+  <script src="/app.js?v=20260919-5" defer></script>
 </body>
 </html>

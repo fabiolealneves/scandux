@@ -1,6 +1,6 @@
 /**
  * Physique Pro — Backend Google Apps Script
- * VERSION: 2026-09-18-db-v8
+ * VERSION: 2026-09-19-db-v11
  *
  * Banco central do app:
  * - Medidas
@@ -20,17 +20,18 @@
  * 5. Continue usando a mesma URL /exec no Physique Pro.
  */
 
-var VERSION='2026-09-18-db-v8';
+var VERSION='2026-09-19-db-v11';
 var HEVY_BASE='https://api.hevyapp.com/v1';
 
 var MEDIDAS_CANON=['id','data','peso','altura','pescoco','cintura','abdomen','quadril','peito','ombros',
-  'bicepsD','bicepsE','antD','antE','coxaD','coxaE','panD','panE','gordura','massaMagra','ffmi','notas'];
+  'bicepsD','bicepsE','antD','antE','coxaD','coxaE','panD','panE','pulso','tornozelo','gordura','massaMagra','ffmi','notas'];
 
 var DATASETS={
-  rotina:{sheet:'Rotina',headers:['id','data','primeiraRefeicao','ultimaRefeicao','refeicoes','agua','sono','humor','energia','fome','digestao','calorias','prancha','ovos','whey','albumina','frango','carne','feijao','arroz','aveia','proteinaTotal','notas','updatedAt']},
+  rotina:{sheet:'Rotina',headers:['id','data','primeiraRefeicao','ultimaRefeicao','refeicoes','agua','sono','humor','energia','fome','digestao','calorias','prancha','spinMin','spinKcal','ovos','whey','albumina','frango','carne','feijao','arroz','aveia','proteinaTotal','notas','updatedAt']},
   recuperacao:{sheet:'Recuperacao',headers:['id','data','sono','energia','recuperacao','treino','updatedAt']},
   prato:{sheet:'Prato',headers:['id','data','veg','prot','carb','hid','variedade','score','updatedAt']},
   scan:{sheet:'Scans',headers:['id','data','frontScore','sideScore','backScore','avgScore','comparabilidade','notas','updatedAt']},
+  pesojejum:{sheet:'PESO_JEJUM',headers:['id','data','hora','peso','gordura','musculo','agua','visceral','imc','tmb','idadeCorporal','massaOssea','proteina','jejum','banheiro','obs','updatedAt']},
   perfil:{sheet:'Perfil',headers:['id','altura','reminderInterval','reminderTime','goalsJson','updatedAt']}
 };
 
@@ -48,7 +49,7 @@ var ALIAS={
   coxad:'coxaD',coxae:'coxaE',coxadireita:'coxaD',coxaesquerda:'coxaE',
   pand:'panD',pane:'panE',panturrilhad:'panD',panturrilhae:'panE',
   panturrilhadireita:'panD',panturrilhaesquerda:'panE',
-  gordura:'gordura',massamagra:'massaMagra',ffmi:'ffmi',notas:'notas'
+  pulso:'pulso',tornozelo:'tornozelo',gordura:'gordura',massamagra:'massaMagra',ffmi:'ffmi',notas:'notas'
 };
 function _canonOf(header){return ALIAS[_norm(header)]||null;}
 function _ss(){return SpreadsheetApp.getActiveSpreadsheet();}
@@ -76,7 +77,7 @@ function handle(e){
     if(body.action)action=body.action;
 
     if(action==='status')return json({success:true,_version:VERSION,datasets:Object.keys(DATASETS).concat(['medidas'])});
-    if(action==='bootstrap')return json({success:true,medidas:_readMedidas(),rotina:_readSimple(DATASETS.rotina),recuperacao:_readSimple(DATASETS.recuperacao),prato:_readSimple(DATASETS.prato),scans:_readSimple(DATASETS.scan),perfil:_readSimple(DATASETS.perfil),_version:VERSION});
+    if(action==='bootstrap')return json({success:true,medidas:_readMedidas(),rotina:_readSimple(DATASETS.rotina),recuperacao:_readSimple(DATASETS.recuperacao),prato:_readSimple(DATASETS.prato),scans:_readSimple(DATASETS.scan),pesojejum:_readSimple(DATASETS.pesojejum),perfil:_readSimple(DATASETS.perfil),_version:VERSION});
     if(action==='get')return json({success:true,registros:_readMedidas(),_version:VERSION});
     if(action==='upsert')return json(_upsertMedida(body));
     if(action==='delete')return json(_deleteMedida(body));
@@ -105,6 +106,7 @@ function _parseDatasetAction(action){
     recovery_get:['recuperacao','get'],recovery_upsert:['recuperacao','upsert'],recovery_delete:['recuperacao','delete'],
     plate_get:['prato','get'],plate_upsert:['prato','upsert'],plate_delete:['prato','delete'],
     scan_get:['scan','get'],scan_upsert:['scan','upsert'],scan_delete:['scan','delete'],
+    weight_get:['pesojejum','get'],weight_upsert:['pesojejum','upsert'],weight_delete:['pesojejum','delete'],
     profile_get:['perfil','get'],profile_upsert:['perfil','upsert'],profile_delete:['perfil','delete']
   };
   var x=map[action];return x?{name:x[0],op:x[1]}:null;
