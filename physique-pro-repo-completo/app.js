@@ -8,7 +8,7 @@ const LS = {
 };
 const state = {
   view:'overview', measures:[], routine:[], profile:{altura:null,reminderInterval:14,reminderTime:'07:00'}, scans:[],
-  hevy:[], apiUrl:'', syncing:false, online:false, version:'', metric:'peso', installPrompt:null
+  hevy:[], apiUrl:'', syncing:false, online:false, version:'', metric:'peso', installPrompt:null, calDate:'', calAdding:null
 };
 const METRICS = [
   {k:'peso',l:'Peso',u:'kg'}, {k:'cintura',l:'Cintura',u:'cm'}, {k:'abdomen',l:'Abdômen',u:'cm'},
@@ -19,7 +19,7 @@ const METRICS = [
 ];
 const NAV = [
   ['overview','Visão Geral','⌂'],['measures','Medidas','↗'],['evolution','Evolução','∿'],['add','Nova medição','＋'],
-  ['history','Histórico','◷'],['scan','Scan','▣'],['routine','Rotina','◴'],['plank','Prancha','⏱'],['settings','Config','⚙']
+  ['history','Histórico','◷'],['scan','Scan','▣'],['routine','Rotina','◴'],['calories','Calorias','◈'],['plank','Prancha','⏱'],['settings','Config','⚙']
 ];
 const BOTTOM = ['overview','evolution','add','scan','routine'];
 const $ = s => document.querySelector(s);
@@ -249,7 +249,7 @@ function buildNav(){
   $$('[data-view]').forEach(b=>b.onclick=()=>go(b.dataset.view));
 }
 function go(v){stopPlank();state.view=v;const n=NAV.find(x=>x[0]===v);$('#pageTitle').textContent=n?.[1]||'Physique Pro';$('#pageEyebrow').textContent=v==='overview'?'PAINEL':'PHYSIQUE PRO';buildNav();render();window.scrollTo({top:0,behavior:'smooth'})}
-function render(){buildNav(); const f={overview:renderOverview,measures:renderMeasures,evolution:renderEvolution,add:renderAdd,history:renderHistory,scan:renderScan,routine:renderRoutine,plank:renderPlank,settings:renderSettings}[state.view]||renderOverview;f()}
+function render(){buildNav(); const f={overview:renderOverview,measures:renderMeasures,evolution:renderEvolution,add:renderAdd,history:renderHistory,scan:renderScan,routine:renderRoutine,calories:renderCalories,plank:renderPlank,settings:renderSettings}[state.view]||renderOverview;f()}
 function empty(title,desc,action='add',label='Nova medição'){return `<div class="card empty"><div class="empty-ic">＋</div><h3>${esc(title)}</h3><p>${esc(desc)}</p><button class="primary-btn" data-go="${action}">${esc(label)}</button></div>`}
 function wireGo(){$$('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go))}
 
@@ -630,6 +630,50 @@ function renderPlank(){
     }else{plankInt=setInterval(()=>{plankSec++;const el=$('#plankTime');if(el)el.textContent=plankFmt(plankSec)},1000);tog.textContent='Parar';tog.classList.add('rec')}
   };
   $('#plankReset').onclick=()=>{stopPlank();plankSec=0;renderPlank()};
+}
+/* ===== Contador de calorias (ingeridas) — local, funciona offline ===== */
+const CAL_MEALS=[['cafe','Café da manhã','☀'],['almoco','Almoço','◐'],['jantar','Jantar','☾'],['lanche','Lanches','◦']];
+const CAL_MACROS=[['protein','Proteína','#f43f5e','g'],['carbs','Carbo','#f59e0b','g'],['fat','Gordura','#3b82f6','g']];
+const CAL_GOAL_DEF={calories:2000,protein:120,carbs:220,fat:60};
+function calAll(){try{return JSON.parse(localStorage.getItem('ppv2_cal')||'{}')}catch{return{}}}
+function calWrite(o){try{localStorage.setItem('ppv2_cal',JSON.stringify(o))}catch(e){}}
+function calGoals(){try{return{...CAL_GOAL_DEF,...JSON.parse(localStorage.getItem('ppv2_cal_goals')||'{}')}}catch{return{...CAL_GOAL_DEF}}}
+function calGoalsSet(g){try{localStorage.setItem('ppv2_cal_goals',JSON.stringify(g))}catch(e){}}
+function calEntries(dk){return calAll()[dk]||[]}
+function calAdd(dk,en){const all=calAll();(all[dk]=all[dk]||[]).push(en);calWrite(all)}
+function calDel(dk,id){const all=calAll();all[dk]=(all[dk]||[]).filter(e=>e.id!==id);if(!all[dk].length)delete all[dk];calWrite(all)}
+function calShift(delta){const d=new Date((state.calDate||today())+'T12:00:00');d.setDate(d.getDate()+delta);const k=d.toISOString().slice(0,10);if(k>today())return;state.calDate=k;state.calAdding=null;renderCalories()}
+function renderCalories(){
+  const dk=state.calDate||today();state.calDate=dk;
+  const entries=calEntries(dk),goals=calGoals();
+  const tot=entries.reduce((a,e)=>({calories:a.calories+(+e.calories||0),protein:a.protein+(+e.protein||0),carbs:a.carbs+(+e.carbs||0),fat:a.fat+(+e.fat||0)}),{calories:0,protein:0,carbs:0,fat:0});
+  const remaining=Math.round(goals.calories-tot.calories),over=tot.calories>goals.calories;
+  const R=54,C=2*Math.PI*R,off=C*(1-Math.min(goals.calories>0?tot.calories/goals.calories:0,1));
+  const isToday=dk===today();
+  const label=(()=>{const y=new Date(Date.now()-864e5).toISOString().slice(0,10);if(dk===today())return 'Hoje';if(dk===y)return 'Ontem';return fmtDate(dk)})();
+  const ring=`<svg width="150" height="150" viewBox="0 0 150 150"><circle cx="75" cy="75" r="${R}" fill="none" stroke="var(--panel3)" stroke-width="13"/><circle cx="75" cy="75" r="${R}" fill="none" stroke="${over?'#f43f5e':'var(--cyan)'}" stroke-width="13" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}" transform="rotate(-90 75 75)"/><text x="75" y="72" text-anchor="middle" style="font:800 30px var(--display);fill:var(--text)">${Math.abs(remaining)}</text><text x="75" y="90" text-anchor="middle" style="font:600 10px var(--font);fill:var(--muted)">${over?'ACIMA':'RESTANTES'}</text></svg>`;
+  const macros=CAL_MACROS.map(([k,l,c])=>{const cons=Math.round(tot[k]),g=goals[k],pc=g>0?Math.min(100,cons/g*100):0;return `<div class="cal-macro"><div class="cal-macro-top"><span>${l}</span><b>${cons}<small>/${g}g</small></b></div><div class="cal-macro-bar"><span style="width:${pc}%;background:${c}"></span></div></div>`}).join('');
+  const meals=CAL_MEALS.map(([mid,ml,mi])=>{
+    const its=entries.filter(e=>e.meal===mid),sub=its.reduce((a,e)=>a+(+e.calories||0),0);
+    const rows=its.map(e=>`<div class="cal-item"><div><b>${esc(e.name)}</b><small>${e.protein||0}p · ${e.carbs||0}c · ${e.fat||0}g</small></div><div class="cal-item-r"><span>${Math.round(e.calories)} kcal</span><button class="cal-del" data-del="${esc(e.id)}" aria-label="Remover">✕</button></div></div>`).join('');
+    const form=state.calAdding===mid?`<div class="cal-form"><input id="cf-name" placeholder="Alimento (ex: Arroz, 100g)" type="text"><div class="cal-form-row"><input id="cf-kcal" placeholder="kcal" type="number" inputmode="numeric"><input id="cf-p" placeholder="prot" type="number" inputmode="numeric"><input id="cf-c" placeholder="carb" type="number" inputmode="numeric"><input id="cf-f" placeholder="gord" type="number" inputmode="numeric"></div><div class="cal-form-btns"><button class="primary-btn" id="cf-save" data-meal="${mid}">Adicionar</button><button class="ghost-btn" id="cf-cancel">Cancelar</button></div></div>`:'';
+    return `<div class="card pad cal-meal"><div class="cal-meal-head"><div class="cal-meal-t"><span class="cal-meal-ic">${mi}</span>${ml}</div><b>${Math.round(sub)} kcal</b></div>${rows||'<p class="cal-empty">Nada registrado</p>'}${form}${state.calAdding===mid?'':`<button class="cal-addbtn" data-add="${mid}">+ Adicionar item</button>`}</div>`;
+  }).join('');
+  const goalsForm=state.calAdding==='goals'?`<div class="card pad"><div class="section-head" style="margin:0 0 10px"><div><h3>Metas diárias</h3></div></div><div class="cal-goals"><label>Calorias<input id="cg-cal" type="number" value="${goals.calories}"></label><label>Proteína<input id="cg-p" type="number" value="${goals.protein}"></label><label>Carbo<input id="cg-c" type="number" value="${goals.carbs}"></label><label>Gordura<input id="cg-f" type="number" value="${goals.fat}"></label></div><div class="cal-form-btns" style="margin-top:12px"><button class="primary-btn" id="cg-save">Salvar metas</button><button class="ghost-btn" id="cg-cancel">Cancelar</button></div></div>`:'';
+  $('#view').innerHTML=`<div class="card pad"><div class="cal-daynav"><button class="cal-arrow" id="cal-prev">‹</button><b>${label}</b><button class="cal-arrow" id="cal-next" ${isToday?'disabled':''}>›</button></div>
+   <div class="cal-hero">${ring}<div class="cal-hero-side">${macros}<div class="cal-consumed">${Math.round(tot.calories)} de ${goals.calories} kcal</div></div></div>
+   <button class="ghost-btn" id="cal-goalsbtn" style="width:100%;margin-top:12px">Ajustar metas</button></div>
+   ${goalsForm}
+   <div class="cal-meals">${meals}</div>`;
+  $('#cal-prev').onclick=()=>calShift(-1);
+  const nx=$('#cal-next');if(nx&&!isToday)nx.onclick=()=>calShift(1);
+  $('#cal-goalsbtn').onclick=()=>{state.calAdding=state.calAdding==='goals'?null:'goals';renderCalories()};
+  $$('[data-add]').forEach(b=>b.onclick=()=>{state.calAdding=b.dataset.add;renderCalories()});
+  $$('[data-del]').forEach(b=>b.onclick=()=>{calDel(dk,b.dataset.del);renderCalories()});
+  const cancel=$('#cf-cancel');if(cancel)cancel.onclick=()=>{state.calAdding=null;renderCalories()};
+  const save=$('#cf-save');if(save)save.onclick=()=>{const name=($('#cf-name').value||'').trim(),kcal=num($('#cf-kcal').value);if(!name||kcal==null){toast('Informe nome e calorias');return}calAdd(dk,{id:'c'+Date.now()+Math.random().toString(36).slice(2,6),meal:save.dataset.meal,name,calories:Math.max(0,Math.round(kcal)),protein:Math.max(0,Math.round(num($('#cf-p').value)||0)),carbs:Math.max(0,Math.round(num($('#cf-c').value)||0)),fat:Math.max(0,Math.round(num($('#cf-f').value)||0))});state.calAdding=null;toast('Adicionado');renderCalories()};
+  const gsave=$('#cg-save');if(gsave)gsave.onclick=()=>{calGoalsSet({calories:Math.max(0,Math.round(num($('#cg-cal').value)||CAL_GOAL_DEF.calories)),protein:Math.max(0,Math.round(num($('#cg-p').value)||0)),carbs:Math.max(0,Math.round(num($('#cg-c').value)||0)),fat:Math.max(0,Math.round(num($('#cg-f').value)||0))});state.calAdding=null;toast('Metas salvas');renderCalories()};
+  const gcancel=$('#cg-cancel');if(gcancel)gcancel.onclick=()=>{state.calAdding=null;renderCalories()};
 }
 function renderSettings(){
   $('#view').innerHTML=`<div class="settings-grid"><div class="card settings-card"><h3>Banco de dados</h3><div class="field"><label>URL do Apps Script (/exec)</label><input id="apiInput" value="${esc(state.apiUrl)}"></div><div class="action-row" style="margin-top:10px"><button class="primary-btn" id="saveApi">Salvar e testar</button><button class="ghost-btn" id="syncNow">Sincronizar</button></div><p>Compatível com o backend antigo (get/upsert) e com o banco novo (bootstrap + datasets).</p></div>
