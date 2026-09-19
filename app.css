@@ -188,3 +188,8 @@
 .cal-goals{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .cal-goals label{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:5px}
 .cal-goals input{padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);font:600 13px var(--font)}
+
+/* ===== Alimentos rápidos (calorias) ===== */
+.cal-foods{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.cal-food{padding:6px 10px;border-radius:99px;border:1px solid var(--line);background:var(--panel2);color:var(--muted);font-size:11px;cursor:pointer;white-space:nowrap}
+.cal-food:active,.cal-food:hover{color:var(--text);border-color:var(--primary)}

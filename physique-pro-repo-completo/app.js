@@ -635,6 +635,13 @@ function renderPlank(){
 const CAL_MEALS=[['cafe','Café da manhã','☀'],['almoco','Almoço','◐'],['jantar','Jantar','☾'],['lanche','Lanches','◦']];
 const CAL_MACROS=[['protein','Proteína','#f43f5e','g'],['carbs','Carbo','#f59e0b','g'],['fat','Gordura','#3b82f6','g']];
 const CAL_GOAL_DEF={calories:2000,protein:120,carbs:220,fat:60};
+const FOODS=[
+ {n:'Ovo (1un)',kcal:78,p:6.3,c:.6,f:5.3},{n:'Whey (1 dose)',kcal:120,p:24,c:3,f:1.5},{n:'Albumina (1 dose)',kcal:110,p:24,c:2,f:0},
+ {n:'Frango (100g)',kcal:165,p:31,c:0,f:3.6},{n:'Carne vermelha (100g)',kcal:250,p:26,c:0,f:15},{n:'Tilápia (100g)',kcal:96,p:20,c:0,f:1.7},
+ {n:'Atum (100g)',kcal:116,p:26,c:0,f:1},{n:'Feijão (100g)',kcal:76,p:4.8,c:14,f:.5},{n:'Arroz integral (100g)',kcal:111,p:2.6,c:23,f:.9},
+ {n:'Arroz branco (100g)',kcal:130,p:2.7,c:28,f:.3},{n:'Aveia (30g)',kcal:117,p:4.2,c:20,f:2.3},{n:'Batata doce (100g)',kcal:86,p:1.6,c:20,f:.1},
+ {n:'Banana (1un)',kcal:105,p:1.3,c:27,f:.4},{n:'Pão integral (fatia)',kcal:80,p:4,c:14,f:1},{n:'Leite (200ml)',kcal:120,p:6.6,c:9.6,f:6}
+];
 function calAll(){try{return JSON.parse(localStorage.getItem('ppv2_cal')||'{}')}catch{return{}}}
 function calWrite(o){try{localStorage.setItem('ppv2_cal',JSON.stringify(o))}catch(e){}}
 function calGoals(){try{return{...CAL_GOAL_DEF,...JSON.parse(localStorage.getItem('ppv2_cal_goals')||'{}')}}catch{return{...CAL_GOAL_DEF}}}
@@ -656,7 +663,7 @@ function renderCalories(){
   const meals=CAL_MEALS.map(([mid,ml,mi])=>{
     const its=entries.filter(e=>e.meal===mid),sub=its.reduce((a,e)=>a+(+e.calories||0),0);
     const rows=its.map(e=>`<div class="cal-item"><div><b>${esc(e.name)}</b><small>${e.protein||0}p · ${e.carbs||0}c · ${e.fat||0}g</small></div><div class="cal-item-r"><span>${Math.round(e.calories)} kcal</span><button class="cal-del" data-del="${esc(e.id)}" aria-label="Remover">✕</button></div></div>`).join('');
-    const form=state.calAdding===mid?`<div class="cal-form"><input id="cf-name" placeholder="Alimento (ex: Arroz, 100g)" type="text"><div class="cal-form-row"><input id="cf-kcal" placeholder="kcal" type="number" inputmode="numeric"><input id="cf-p" placeholder="prot" type="number" inputmode="numeric"><input id="cf-c" placeholder="carb" type="number" inputmode="numeric"><input id="cf-f" placeholder="gord" type="number" inputmode="numeric"></div><div class="cal-form-btns"><button class="primary-btn" id="cf-save" data-meal="${mid}">Adicionar</button><button class="ghost-btn" id="cf-cancel">Cancelar</button></div></div>`:'';
+    const form=state.calAdding===mid?`<div class="cal-form"><div class="cal-foods">${FOODS.map((fd,i)=>`<button type="button" class="cal-food" data-food="${i}">${esc(fd.n)}</button>`).join('')}</div><input id="cf-name" placeholder="Alimento (ex: Arroz, 100g)" type="text"><div class="cal-form-row"><input id="cf-kcal" placeholder="kcal" type="number" inputmode="numeric"><input id="cf-p" placeholder="prot" type="number" inputmode="numeric"><input id="cf-c" placeholder="carb" type="number" inputmode="numeric"><input id="cf-f" placeholder="gord" type="number" inputmode="numeric"></div><div class="cal-form-btns"><button class="primary-btn" id="cf-save" data-meal="${mid}">Adicionar</button><button class="ghost-btn" id="cf-cancel">Cancelar</button></div></div>`:'';
     return `<div class="card pad cal-meal"><div class="cal-meal-head"><div class="cal-meal-t"><span class="cal-meal-ic">${mi}</span>${ml}</div><b>${Math.round(sub)} kcal</b></div>${rows||'<p class="cal-empty">Nada registrado</p>'}${form}${state.calAdding===mid?'':`<button class="cal-addbtn" data-add="${mid}">+ Adicionar item</button>`}</div>`;
   }).join('');
   const goalsForm=state.calAdding==='goals'?`<div class="card pad"><div class="section-head" style="margin:0 0 10px"><div><h3>Metas diárias</h3></div></div><div class="cal-goals"><label>Calorias<input id="cg-cal" type="number" value="${goals.calories}"></label><label>Proteína<input id="cg-p" type="number" value="${goals.protein}"></label><label>Carbo<input id="cg-c" type="number" value="${goals.carbs}"></label><label>Gordura<input id="cg-f" type="number" value="${goals.fat}"></label></div><div class="cal-form-btns" style="margin-top:12px"><button class="primary-btn" id="cg-save">Salvar metas</button><button class="ghost-btn" id="cg-cancel">Cancelar</button></div></div>`:'';
@@ -671,6 +678,7 @@ function renderCalories(){
   $$('[data-add]').forEach(b=>b.onclick=()=>{state.calAdding=b.dataset.add;renderCalories()});
   $$('[data-del]').forEach(b=>b.onclick=()=>{calDel(dk,b.dataset.del);renderCalories()});
   const cancel=$('#cf-cancel');if(cancel)cancel.onclick=()=>{state.calAdding=null;renderCalories()};
+  $$('[data-food]').forEach(b=>b.onclick=()=>{const fd=FOODS[+b.dataset.food];if(!fd)return;$('#cf-name').value=fd.n;$('#cf-kcal').value=fd.kcal;$('#cf-p').value=fd.p;$('#cf-c').value=fd.c;$('#cf-f').value=fd.f});
   const save=$('#cf-save');if(save)save.onclick=()=>{const name=($('#cf-name').value||'').trim(),kcal=num($('#cf-kcal').value);if(!name||kcal==null){toast('Informe nome e calorias');return}calAdd(dk,{id:'c'+Date.now()+Math.random().toString(36).slice(2,6),meal:save.dataset.meal,name,calories:Math.max(0,Math.round(kcal)),protein:Math.max(0,Math.round(num($('#cf-p').value)||0)),carbs:Math.max(0,Math.round(num($('#cf-c').value)||0)),fat:Math.max(0,Math.round(num($('#cf-f').value)||0))});state.calAdding=null;toast('Adicionado');renderCalories()};
   const gsave=$('#cg-save');if(gsave)gsave.onclick=()=>{calGoalsSet({calories:Math.max(0,Math.round(num($('#cg-cal').value)||CAL_GOAL_DEF.calories)),protein:Math.max(0,Math.round(num($('#cg-p').value)||0)),carbs:Math.max(0,Math.round(num($('#cg-c').value)||0)),fat:Math.max(0,Math.round(num($('#cg-f').value)||0))});state.calAdding=null;toast('Metas salvas');renderCalories()};
   const gcancel=$('#cg-cancel');if(gcancel)gcancel.onclick=()=>{state.calAdding=null;renderCalories()};

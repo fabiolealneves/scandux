@@ -1,5 +1,5 @@
-const CACHE='physique-pro-v2-20260918-3';
-const CORE=['/','/index.html','/app.css?v=20260918-3','/app.js?v=20260918-3','/manifest.webmanifest','/icon.svg'];
+const CACHE='physique-pro-v2-20260919-1';
+const CORE=['/','/index.html','/app.css?v=20260919-1','/app.js?v=20260919-1','/manifest.webmanifest','/icon.svg','/icon-192.png','/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{
